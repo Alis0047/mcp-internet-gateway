@@ -134,15 +134,24 @@ async def _do_search(query: str):
 
     # Use DuckDuckGo's HTML search endpoint for demonstration.  You may
     # substitute this with another search provider or your own service.
-    search_url = "https://duckduckgo.com/html/"
+    search_url = "https://html.duckduckgo.com/html/"
     params = {"q": query}
     try:
-        resp = requests.get(search_url, params=params,
-                            headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+        resp = requests.get(
+            search_url, 
+            params=params,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            }, 
+            timeout=15
+        )
     except requests.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Search request failed: {e}")
 
-    if resp.status_code != 200:
+    # Accept both 200 and 202 responses
+    if resp.status_code not in [200, 202]:
         raise HTTPException(status_code=502,
                             detail=f"Search returned {resp.status_code}")
 
