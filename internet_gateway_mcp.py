@@ -108,9 +108,6 @@ mcp = FastMCP(name="Internet Gateway MCP",
                   "fetch tool to download their text."
               ))
 
-# Create a FastAPI app for direct HTTP endpoints (for ChatGPT Actions)
-app = FastAPI(title="Internet Gateway MCP", version="1.0.0")
-
 
 @mcp.tool()
 async def search(query: str):
@@ -127,6 +124,11 @@ async def search(query: str):
         retrieve the full page content.  Results are filtered by the
         configured domain allowlist.
     """
+    return await _do_search(query)
+
+
+async def _do_search(query: str):
+    """Internal implementation of search"""
     if not query or not query.strip():
         return {"results": []}
 
@@ -174,8 +176,13 @@ async def fetch(id: str):
     Returns:
         A dictionary containing ``id``, ``title``, ``text``, ``url`` and
         ``metadata`` keys.  This structure conforms to the specification of
-        the ``fetch`` tool described in OpenAI’s documentation【118307517586934†L274-L288】.
+        the ``fetch`` tool described in OpenAI's documentation【118307517586934†L274-L288】.
     """
+    return await _do_fetch(id)
+
+
+async def _do_fetch(id: str):
+    """Internal implementation of fetch"""
     if not id:
         raise HTTPException(status_code=400, detail="id (URL) is required")
 
@@ -223,14 +230,14 @@ async def api_search(request: Request):
     """Direct REST endpoint for web search (ChatGPT Actions)"""
     body = await request.json()
     query = body.get("query", "")
-    return await search(query)
+    return await _do_search(query)
 
 @app.post("/tools/fetch")
 async def api_fetch(request: Request):
     """Direct REST endpoint for webpage fetching (ChatGPT Actions)"""
     body = await request.json()
     url = body.get("id", "")
-    return await fetch(url)
+    return await _do_fetch(url)
 
 # Mount MCP endpoint at /mcp
 mcp_app = mcp.http_app()
