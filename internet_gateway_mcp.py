@@ -202,13 +202,22 @@ async def fetch(id: str):
     }
 
 
-# Export the FastMCP HTTP app for uvicorn
-# Call http_app() method to create the Starlette application
-mcp_app = mcp.http_app()
-
-# Add direct REST endpoints for ChatGPT Actions
+# Create FastAPI app for direct REST endpoints (ChatGPT Actions)
 from fastapi import Request
+from starlette.middleware.cors import CORSMiddleware
 
+app = FastAPI(title="Internet Gateway MCP", version="1.0.0")
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Direct REST endpoints for ChatGPT Actions
 @app.post("/tools/search")
 async def api_search(request: Request):
     """Direct REST endpoint for web search (ChatGPT Actions)"""
@@ -223,13 +232,6 @@ async def api_fetch(request: Request):
     url = body.get("id", "")
     return await fetch(url)
 
-# Mount MCP endpoint
-from starlette.middleware.cors import CORSMiddleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Mount MCP endpoint at /mcp
+mcp_app = mcp.http_app()
 app.mount("/mcp", mcp_app)
