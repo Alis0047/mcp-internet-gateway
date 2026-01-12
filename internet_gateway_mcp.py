@@ -96,10 +96,9 @@ def _check_url_allowed(url: str) -> None:
     raise HTTPException(status_code=403, detail=f"Domain '{domain}' not allowed")
 
 
-app = FastAPI()
 """
 Create a FastMCP server instance.  The instructions string describes
-the server’s purpose to the model.  The FastMCP instance exposes a
+the server's purpose to the model.  The FastMCP instance exposes a
 `fastapi_app` property that plugs into our FastAPI application.
 """
 mcp = FastMCP(name="Internet Gateway MCP",
@@ -108,6 +107,9 @@ mcp = FastMCP(name="Internet Gateway MCP",
                   "Use the search tool to look up web pages by keyword and the "
                   "fetch tool to download their text."
               ))
+
+# Create a FastAPI app for direct HTTP endpoints (for ChatGPT Actions)
+app = FastAPI(title="Internet Gateway MCP", version="1.0.0")
 
 
 @mcp.tool()
@@ -202,4 +204,32 @@ async def fetch(id: str):
 
 # Export the FastMCP HTTP app for uvicorn
 # Call http_app() method to create the Starlette application
-app = mcp.http_app()
+mcp_app = mcp.http_app()
+
+# Add direct REST endpoints for ChatGPT Actions
+from fastapi import Request
+
+@app.post("/tools/search")
+async def api_search(request: Request):
+    """Direct REST endpoint for web search (ChatGPT Actions)"""
+    body = await request.json()
+    query = body.get("query", "")
+    return await search(query)
+
+@app.post("/tools/fetch")
+async def api_fetch(request: Request):
+    """Direct REST endpoint for webpage fetching (ChatGPT Actions)"""
+    body = await request.json()
+    url = body.get("id", "")
+    return await fetch(url)
+
+# Mount MCP endpoint
+from starlette.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.mount("/mcp", mcp_app)
